@@ -44,21 +44,20 @@ public class TestFragment extends Fragment {
         mList.setLayoutManager(new LinearLayoutManager(getActivity()));
         mRefreshLayout = getView().findViewById(R.id.refresh);
         mList.setAdapter(new DataAdapter());
-        mRefreshLayout.setRefreshing(true);
-//        mRefreshLayout.setOnRefreshListener(new RefreshLayout.OnRefreshListener() {
-//            @Override
-//            public void onRefresh() {
-//                mRefreshLayout.loadMoreEnabled();
-//                max += 5;
-//                mHandler.sendEmptyMessageDelayed(1, 2000);
-//            }
-//        });
-//        mRefreshLayout.setOnLoadMoreListener(new RefreshLayout.OnLoadMoreListener() {
-//            @Override
-//            public void onLoadMore() {
-//                mHandler.sendEmptyMessageDelayed(2, 2000);
-//            }
-//        });
+        mRefreshLayout.setOnRefreshListener(new RefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                mRefreshLayout.loadMoreEnabled();
+                max += 5;
+                mHandler.sendEmptyMessageDelayed(1, 2000);
+            }
+        });
+        mRefreshLayout.setOnLoadMoreListener(new RefreshLayout.OnLoadMoreListener() {
+            @Override
+            public void onLoadMore() {
+                mHandler.sendEmptyMessageDelayed(2, 2000);
+            }
+        });
     }
 
     private Handler mHandler = new Handler(new Handler.Callback() {
@@ -80,11 +79,6 @@ public class TestFragment extends Fragment {
             return false;
         }
     });
-
-    @Override
-    public void setUserVisibleHint(boolean isVisibleToUser) {
-        super.setUserVisibleHint(isVisibleToUser);
-    }
 
     private class DataAdapter extends RecyclerView.Adapter<DataAdapter.VH> {
 

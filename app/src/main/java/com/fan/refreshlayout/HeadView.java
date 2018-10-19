@@ -10,6 +10,7 @@ import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.View;
 import android.widget.LinearLayout;
 
 /**
@@ -18,7 +19,7 @@ import android.widget.LinearLayout;
 
 public class HeadView extends LinearLayout {
     private float mMaxTranslate;
-    private int mDuration = 300;
+    private int mDuration = 150;
 
     public HeadView(Context context) {
         this(context, null);
@@ -44,85 +45,81 @@ public class HeadView extends LinearLayout {
         animFirstViewToBottom();
     }
 
-
-    private boolean isSecondStart;
-    private boolean isThirdStart;
-
     private void animFirstViewToBottom() {
         CircleView view = (CircleView) getChildAt(0);
         view.animate().translationY(mMaxTranslate).setDuration(mDuration).setUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
-                if (animation.getAnimatedFraction() >= 0.5f) {
-                    if (!isSecondStart) {
-                        Log.e("main", "start Second");
-                        animSecondViewToBottom();
-                        isSecondStart = true;
-                    }
+                View cur = getChildAt(0);
+                if (cur.getTranslationY() >= mMaxTranslate / 2 && getChildAt(1).getTranslationY() == 0) {
+                    animSecondViewToBottom();
                 }
-                if (animation.getAnimatedFraction() == 1.0f) {
-                    Log.e("main", "onAnimationUpdate");
-                    animFirstViewToTop();
-                    animation.cancel();
-                }
+            }
+        }).setListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                super.onAnimationEnd(animation);
+                animFirstViewToTop();
             }
         }).start();
     }
 
     private void animFirstViewToTop() {
         CircleView view = (CircleView) getChildAt(0);
+        if (view.getTranslationY() == 0) return;
         view.animate().translationY(0).setDuration(mDuration).start();
     }
+
 
     private void animSecondViewToBottom() {
         CircleView view = (CircleView) getChildAt(1);
         view.animate().translationY(mMaxTranslate).setDuration(mDuration).setUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
-                if (animation.getAnimatedFraction() >= 0.5f) {
-                    if (!isThirdStart) {
-                        Log.e("main", "start third");
-                        animThirdViewToBottom();
-                        isThirdStart = true;
-                    }
+                View cur = getChildAt(1);
+                if (cur.getTranslationY() >= mMaxTranslate / 2 && getChildAt(2).getTranslationY() == 0) {
+                    animThirdViewToBottom();
                 }
-                if (animation.getAnimatedFraction() == 1.0f) {
-                    animSecondViewToTop();
-                }
+            }
+        }).setListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                super.onAnimationEnd(animation);
+                animSecondViewToTop();
             }
         }).start();
     }
 
     private void animSecondViewToTop() {
         CircleView view = (CircleView) getChildAt(1);
+        if (view.getTranslationY() == 0) return;
         view.animate().translationY(0).setDuration(mDuration).start();
     }
 
     private void animThirdViewToBottom() {
         CircleView view = (CircleView) getChildAt(2);
-        view.animate().translationY(mMaxTranslate).setDuration(mDuration).setUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+        view.animate().translationY(mMaxTranslate).setDuration(mDuration).setListener(new AnimatorListenerAdapter() {
             @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                if (animation.getAnimatedFraction() == 1.0f) {
-                    animThirdViewToTop();
-                }
+            public void onAnimationEnd(Animator animation) {
+                super.onAnimationEnd(animation);
+                animThirdViewToTop();
             }
         }).start();
     }
 
+
     private void animThirdViewToTop() {
         CircleView view = (CircleView) getChildAt(2);
+        if (view.getTranslationY() == 0) return;
         view.animate().translationY(0).setDuration(mDuration).setListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
                 super.onAnimationEnd(animation);
+
                 postDelayed(new Runnable() {
                     @Override
                     public void run() {
-//                        isSecondStart = false;
-//                        isThirdStart = false;
-//                        animFirstViewToBottom();
-                        Log.e("main", "onAnimationEnd");
+                        animFirstViewToBottom();
                     }
                 }, 500);
             }
