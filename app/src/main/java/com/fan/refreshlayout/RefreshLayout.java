@@ -2,26 +2,22 @@ package com.fan.refreshlayout;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
-import android.graphics.Canvas;
 import android.graphics.drawable.AnimationDrawable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.InflateException;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
-import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
-import android.view.animation.AccelerateInterpolator;
 import android.widget.ImageView;
-import android.widget.Scroller;
 
 /**
  * Created by huisoucw on 2018/8/30.
  */
-public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListener {
+
+public class RefreshLayout extends ViewGroup {
     private View mChild;
     private View mFooter;
     private View mHeader;
@@ -35,11 +31,10 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
     private OnRefreshListener mRefreshListener;
     private OnChildScrollListener mChildScrollListener;
     private boolean isEnabledLoadMore;
+    private boolean mPendingRefresh;
+    private boolean mPendingLoadMore;
     private int mTouchSlop;
     private ImageView mHeadImage, mFootImage;
-    private VelocityTracker mVelocityTracker;
-    private Scroller mScroller;
-    private boolean isAutoLoadMore = true;
 
     public RefreshLayout(Context context) {
         super(context);
@@ -52,7 +47,6 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         mFootMaxOffset = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100, context.getResources().getDisplayMetrics());
         mHeadMaxOffset = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 150, context.getResources().getDisplayMetrics());
-        mScroller = new Scroller(context,new AccelerateInterpolator());
     }
 
     @Override
@@ -82,7 +76,6 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
             throw new InflateException("can only have one child");
         }
         mChild = getChildAt(2);
-        mChild.setOnScrollChangeListener(this);
     }
 
     private void createFootView() {
@@ -109,6 +102,8 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
         slowReset(0);
         isLoading = false;
         isRefreshing = false;
+        mPendingLoadMore = false;
+        mPendingRefresh = false;
         setFootAnim(false);
         setHeadAnim(false);
     }
@@ -152,7 +147,6 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
         mRefreshListener = listener;
     }
 
-
     public interface OnLoadMoreListener {
         void onLoadMore();
     }
@@ -176,11 +170,13 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
     public void loadFinish() {
         slowReset(0);
         isLoading = false;
+        mPendingLoadMore = false;
         setFootAnim(false);
     }
 
     public void setRefreshing(boolean refreshing) {
         isRefreshing = refreshing;
+        mPendingRefresh = refreshing;
         if (refreshing) {
             post(new Runnable() {
                 @Override
@@ -196,92 +192,74 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
     }
 
     @Override
-    public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
-        if (mVelocityTracker == null) return;
-        if (mChildVelocity < 0 && !canChildScrollDown()) {
-            mScroller.fling(0, getScrollY(), 0, (int) -mChildVelocity,
-                    Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, mFootMaxOffset);
-            invalidate();
-        }
-    }
-
-    private float mChildVelocity;
-
-    @Override
-    public void computeScroll() {
-        super.computeScroll();
-        if (mScroller.computeScrollOffset()) {
-            int target = mScroller.getCurrY();
-            if (getScrollY() >= mHeader.getHeight()) {
-                target = mHeader.getHeight();
-                mScroller.forceFinished(true);
-            }
-            scrollTo(0, target);
-            postInvalidate();
-            if (!isLoading){
-                setFootAnim(true);
-                isLoading = true;
-                if (mLoadMoreListener != null) mLoadMoreListener.onLoadMore();
-            }
-            Log.e("main", "velocity " + mScroller.getCurrVelocity() + "   " + mScroller.getCurrY());
-        }
-    }
-
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (isLoading || isRefreshing || !isEnabled()) {
-            return super.dispatchTouchEvent(ev);
-        }
-        if (mVelocityTracker == null) {
-            mVelocityTracker = VelocityTracker.obtain();
-        }
-        if (mChildVelocity != 0) mChildVelocity = 0;
-        int offset = getScrollY();
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        if (isLoading || isRefreshing || !isEnabled())
+            return super.onInterceptTouchEvent(ev);
         switch (ev.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                mDownY = ev.getRawY();
-                mLastY = mDownY;
-                mVelocityTracker.addMovement(ev);
+                mLastY = ev.getRawY();
+                mDownY = mLastY;
                 break;
             case MotionEvent.ACTION_MOVE:
-                mVelocityTracker.addMovement(ev);
-                mVelocityTracker.computeCurrentVelocity(1000);
                 float curY = ev.getRawY();
-                float dy = mLastY - curY;
+                float dy = curY - mLastY;
                 mLastY = curY;
-                if (Math.abs(curY - mDownY) < mTouchSlop) return super.dispatchTouchEvent(ev);
-                float pending = dy + offset;
-                if (dy > 0) {
+                if (Math.abs(curY - mDownY) < mTouchSlop) return super.onInterceptTouchEvent(ev);
+                if (dy < 0) {
                     //加载更多
-                    if (!isEnabledLoadMore) {
-                        return super.dispatchTouchEvent(ev);
+                    if (canChildScrollDown() || !isEnabledLoadMore) {
+                        return super.onInterceptTouchEvent(ev);
                     }
-                    if (canChildScrollDown() && offset >= 0) {
-                        scrollTo(0, 0);
-                        return super.dispatchTouchEvent(ev);
+                    mPendingLoadMore = true;
+                }
+                if (dy > 0) {
+                    //下拉刷新
+                    if (canChildScrollUp()) {
+                        return super.onInterceptTouchEvent(ev);
                     }
+                    mPendingRefresh = true;
+                }
+                return true;
+        }
+        return super.onInterceptTouchEvent(ev);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent ev) {
+        if (isLoading || isRefreshing || !isEnabled()) {
+            return super.onTouchEvent(ev);
+        }
+        int offset = getScrollY();
+        switch (ev.getAction()) {
+            case MotionEvent.ACTION_MOVE:
+                float curY = ev.getRawY();
+                int dy = (int) (curY - mLastY);
+                mLastY = curY;
+                int pending = -dy + offset;
+                if (mPendingLoadMore) {
                     if (pending > mFootMaxOffset) {
                         scrollTo(0, mFootMaxOffset);
                         return true;
                     }
-                }
-                if (dy < 0) {
-                    if (canChildScrollUp() && offset <= 0) {
+                    if (pending < 0) {
                         scrollTo(0, 0);
-                        return super.dispatchTouchEvent(ev);
+                        return true;
                     }
+                }
+                if (mPendingRefresh) {
                     if (Math.abs(pending) > mHeadMaxOffset) {
                         scrollTo(0, -mHeadMaxOffset);
                         return true;
                     }
+                    if (pending > 0) {
+                        scrollTo(0, 0);
+                        return true;
+                    }
                 }
                 getParent().requestDisallowInterceptTouchEvent(Math.abs(offset) != 0);
-                scrollBy(0, (int) dy);
-                return true;
-            case MotionEvent.ACTION_CANCEL:
+                scrollBy(0, -dy);
+                break;
             case MotionEvent.ACTION_UP:
-                mChildVelocity = mVelocityTracker.getYVelocity();
-                mVelocityTracker.clear();
                 if (offset > 0 && offset >= mFooter.getHeight()) {
                     isLoading = true;
                     slowReset(mFooter.getHeight());
@@ -294,11 +272,13 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
                     if (mRefreshListener != null) mRefreshListener.onRefresh();
                 } else {
                     slowReset(0);
+                    mPendingRefresh = false;
+                    mPendingLoadMore = false;
                 }
                 break;
 
         }
-        return super.dispatchTouchEvent(ev);
+        return true;
     }
 
     private ValueAnimator resetAnimator;
