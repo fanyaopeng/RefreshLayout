@@ -14,6 +14,7 @@ import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.animation.AccelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.Scroller;
 
@@ -51,7 +52,7 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         mFootMaxOffset = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100, context.getResources().getDisplayMetrics());
         mHeadMaxOffset = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 150, context.getResources().getDisplayMetrics());
-        mScroller = new Scroller(context);
+        mScroller = new Scroller(context,new AccelerateInterpolator());
     }
 
     @Override
@@ -213,10 +214,11 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
             int target = mScroller.getCurrY();
             if (getScrollY() >= mHeader.getHeight()) {
                 target = mHeader.getHeight();
+                mScroller.forceFinished(true);
             }
             scrollTo(0, target);
             postInvalidate();
-            if (!isLoading) {
+            if (!isLoading){
                 setFootAnim(true);
                 isLoading = true;
                 if (mLoadMoreListener != null) mLoadMoreListener.onLoadMore();
