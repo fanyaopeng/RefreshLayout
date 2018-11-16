@@ -1,8 +1,8 @@
 package com.fan.refreshlayout;
 
 import android.animation.ValueAnimator;
-import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Canvas;
 import android.graphics.drawable.AnimationDrawable;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -20,7 +20,6 @@ import android.widget.Scroller;
 /**
  * Created by huisoucw on 2018/8/30.
  */
-@SuppressLint("NewApi")
 public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListener {
     private View mChild;
     private View mFooter;
@@ -39,6 +38,7 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
     private ImageView mHeadImage, mFootImage;
     private VelocityTracker mVelocityTracker;
     private Scroller mScroller;
+    private boolean isAutoLoadMore = true;
 
     public RefreshLayout(Context context) {
         super(context);
@@ -194,8 +194,6 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
         }
     }
 
-    private float mChildVelocity;
-
     @Override
     public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
         if (mVelocityTracker == null) return;
@@ -206,24 +204,24 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
         }
     }
 
+    private float mChildVelocity;
+
     @Override
     public void computeScroll() {
         super.computeScroll();
         if (mScroller.computeScrollOffset()) {
-            scrollTo(0, mScroller.getCurrY());
-            postInvalidate();
-            Log.e("main", "velocity " + mScroller.getCurrVelocity());
-            if (mScroller.getCurrVelocity() < 4000) {
-                //mScroller.forceFinished(true);
+            int target = mScroller.getCurrY();
+            if (getScrollY() >= mHeader.getHeight()) {
+                target = mHeader.getHeight();
             }
-            if (mScroller.isFinished()) {
+            scrollTo(0, target);
+            postInvalidate();
+            if (!isLoading) {
                 setFootAnim(true);
                 isLoading = true;
                 if (mLoadMoreListener != null) mLoadMoreListener.onLoadMore();
-                if (getScrollY() > mHeader.getHeight()) {
-                    slowReset(mFooter.getHeight());
-                }
             }
+            Log.e("main", "velocity " + mScroller.getCurrVelocity() + "   " + mScroller.getCurrY());
         }
     }
 

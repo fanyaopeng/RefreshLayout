@@ -58,7 +58,7 @@ public class TestFragment extends Fragment {
             @Override
             public void onLoadMore() {
                 Log.e("main", "onLoadMore");
-                mHandler.sendEmptyMessageDelayed(2, 200);
+                mHandler.sendEmptyMessageDelayed(2, 2000);
             }
         });
     }
@@ -70,7 +70,7 @@ public class TestFragment extends Fragment {
                 mRefreshLayout.setRefreshing(false);
             } else if (msg.what == 2) {
                 int start = mData.size();
-                int end = mData.size() + 20;
+                int end = mData.size() + 5;
                 while (start < end) {
                     start++;
                     mData.add("这是数据" + start);
