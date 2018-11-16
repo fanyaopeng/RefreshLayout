@@ -57,7 +57,8 @@ public class TestFragment extends Fragment {
         mRefreshLayout.setOnLoadMoreListener(new RefreshLayout.OnLoadMoreListener() {
             @Override
             public void onLoadMore() {
-                mHandler.sendEmptyMessageDelayed(2, 200);
+                Log.e("main", "onLoadMore");
+                mHandler.sendEmptyMessageDelayed(2, 2000);
             }
         });
     }

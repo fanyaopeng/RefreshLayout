@@ -4,7 +4,6 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.drawable.AnimationDrawable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.InflateException;
 import android.view.LayoutInflater;
@@ -91,6 +90,31 @@ public class RefreshLayout extends ViewGroup {
         mHeadImage = mHeader.findViewById(R.id.img_head);
     }
 
+    @Override
+    public void setEnabled(boolean enabled) {
+        super.setEnabled(enabled);
+        if (!enabled) {
+            reset();
+        }
+    }
+
+    private void reset() {
+        slowReset(0);
+        isLoading = false;
+        isRefreshing = false;
+        mPendingLoadMore = false;
+        mPendingRefresh = false;
+        setFootAnim(false);
+        setHeadAnim(false);
+    }
+
+    public boolean isRefreshing() {
+        return isRefreshing;
+    }
+
+    public boolean isLoading() {
+        return isLoading;
+    }
 
     private void setHeadAnim(boolean start) {
         AnimationDrawable drawable = (AnimationDrawable) mHeadImage.getDrawable();
@@ -169,7 +193,7 @@ public class RefreshLayout extends ViewGroup {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        if (isLoading || isRefreshing)
+        if (isLoading || isRefreshing || !isEnabled())
             return super.onInterceptTouchEvent(ev);
         switch (ev.getAction()) {
             case MotionEvent.ACTION_DOWN:
@@ -202,10 +226,9 @@ public class RefreshLayout extends ViewGroup {
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        if (isLoading || isRefreshing) {
+        if (isLoading || isRefreshing || !isEnabled()) {
             return super.onTouchEvent(ev);
         }
-        Log.e("main", "onTouchEvent");
         int offset = getScrollY();
         switch (ev.getAction()) {
             case MotionEvent.ACTION_MOVE:
