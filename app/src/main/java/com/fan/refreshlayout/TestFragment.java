@@ -26,7 +26,7 @@ public class TestFragment extends Fragment {
     private RecyclerView mList;
     private List<String> mData = new ArrayList<>();
     private RefreshLayout mRefreshLayout;
-    private int max = 12;
+    private int max = Integer.MAX_VALUE;
 
     @Nullable
     @Override
@@ -38,11 +38,13 @@ public class TestFragment extends Fragment {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         mList = getView().findViewById(R.id.list);
+        mList.setNestedScrollingEnabled(false);
         for (int i = 0; i < 5; i++) {
             mData.add("这是数据" + i);
         }
         mList.setLayoutManager(new LinearLayoutManager(getActivity()));
         mRefreshLayout = getView().findViewById(R.id.refresh);
+        //mRefreshLayout.setRefreshing(true);
         mList.setAdapter(new DataAdapter());
         mRefreshLayout.setOnRefreshListener(new RefreshLayout.OnRefreshListener() {
             @Override
@@ -55,7 +57,7 @@ public class TestFragment extends Fragment {
         mRefreshLayout.setOnLoadMoreListener(new RefreshLayout.OnLoadMoreListener() {
             @Override
             public void onLoadMore() {
-                mHandler.sendEmptyMessageDelayed(2, 2000);
+                mHandler.sendEmptyMessageDelayed(2, 200);
             }
         });
     }
@@ -67,7 +69,7 @@ public class TestFragment extends Fragment {
                 mRefreshLayout.setRefreshing(false);
             } else if (msg.what == 2) {
                 int start = mData.size();
-                int end = mData.size() + 2;
+                int end = mData.size() + 20;
                 while (start < end) {
                     start++;
                     mData.add("这是数据" + start);
