@@ -213,8 +213,8 @@ public class RefreshLayout extends ViewGroup implements View.OnScrollChangeListe
             scrollTo(0, mScroller.getCurrY());
             postInvalidate();
             Log.e("main", "velocity " + mScroller.getCurrVelocity());
-            if (mScroller.getCurrVelocity() < 4000){
-                mScroller.forceFinished(true);
+            if (mScroller.getCurrVelocity() < 4000) {
+                //mScroller.forceFinished(true);
             }
             if (mScroller.isFinished()) {
                 setFootAnim(true);

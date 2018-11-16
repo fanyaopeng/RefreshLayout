@@ -58,7 +58,7 @@ public class TestFragment extends Fragment {
             @Override
             public void onLoadMore() {
                 Log.e("main", "onLoadMore");
-                mHandler.sendEmptyMessageDelayed(2, 2000);
+                mHandler.sendEmptyMessageDelayed(2, 200);
             }
         });
     }
