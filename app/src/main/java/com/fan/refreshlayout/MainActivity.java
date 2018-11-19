@@ -1,6 +1,8 @@
 package com.fan.refreshlayout;
 
 import android.os.Bundle;
+import android.support.annotation.Nullable;
+import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
@@ -20,6 +22,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         final ViewPager pager = findViewById(R.id.vp);
+        TabLayout tab = findViewById(R.id.tab);
         mFragments = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             mFragments.add(new TestFragment());
@@ -27,14 +30,25 @@ public class MainActivity extends AppCompatActivity {
         pager.setAdapter(new FragmentPagerAdapter(getSupportFragmentManager()) {
             @Override
             public Fragment getItem(int position) {
-                return mFragments.get(position);
+                Bundle bundle=new Bundle();
+                bundle.putInt("pos",position);
+                Fragment f=mFragments.get(position);
+                f.setArguments(bundle);
+                return f;
             }
 
             @Override
             public int getCount() {
                 return mFragments.size();
             }
+
+            @Nullable
+            @Override
+            public CharSequence getPageTitle(int position) {
+                return "tab "+position;
+            }
         });
+        tab.setupWithViewPager(pager);
     }
 
 }

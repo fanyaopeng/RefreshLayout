@@ -44,7 +44,7 @@ public class TestFragment extends Fragment {
         }
         mList.setLayoutManager(new LinearLayoutManager(getActivity()));
         mRefreshLayout = getView().findViewById(R.id.refresh);
-        //mRefreshLayout.setRefreshing(true);
+        mRefreshLayout.setAutoLoadMore(getArguments().getInt("pos") > 1);
         mList.setAdapter(new DataAdapter());
         mRefreshLayout.setOnRefreshListener(new RefreshLayout.OnRefreshListener() {
             @Override
