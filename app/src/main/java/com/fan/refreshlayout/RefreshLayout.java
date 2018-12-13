@@ -86,6 +86,8 @@ public class RefreshLayout extends ViewGroup implements ViewTreeObserver.OnScrol
         if (getChildCount() > 3) {
             throw new InflateException("can only have one child");
         }
+        mHeader = getChildAt(0);
+        mFooter = getChildAt(1);
         mChild = getChildAt(2);
         mChild.getViewTreeObserver().addOnScrollChangedListener(this);
         mChild.setOnScrollChangeListener(this);
@@ -97,15 +99,13 @@ public class RefreshLayout extends ViewGroup implements ViewTreeObserver.OnScrol
     }
 
     private void createFootView() {
-        mFooter = LayoutInflater.from(getContext()).inflate(R.layout.refresh_footer, this, false);
-        addView(mFooter);
-        mFootImage = mFooter.findViewById(R.id.img_footer);
+        LayoutInflater.from(getContext()).inflate(R.layout.refresh_footer, this, true);
+        mFootImage = findViewById(R.id.img_footer);
     }
 
     private void createHeadView() {
-        mHeader = LayoutInflater.from(getContext()).inflate(R.layout.refresh_header, this, false);
-        addView(mHeader);
-        mHeadImage = mHeader.findViewById(R.id.img_head);
+        LayoutInflater.from(getContext()).inflate(R.layout.refresh_header, this, true);
+        mHeadImage = findViewById(R.id.img_head);
     }
 
     @Override
@@ -221,7 +221,8 @@ public class RefreshLayout extends ViewGroup implements ViewTreeObserver.OnScrol
     @Override
     public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
         if (mChildVelocity < 0) {
-            mScroller.computeScrollOffset();
+            //mScroller.computeScrollOffset();
+            Log.e("main", "curY " + mScroller.getCurrY());
             Log.e("main", "开始fling" + mScroller.getCurrVelocity() + "总速率为 " + mChildVelocity);
             if (!canChildScrollDown()) {
                 Log.e("main", "当前速率为" + mScroller.getCurrVelocity() + "总速率为 " + mChildVelocity);
