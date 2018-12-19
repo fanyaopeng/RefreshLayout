@@ -16,9 +16,13 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.widget.ImageView;
 import android.widget.OverScroller;
+import android.widget.Scroller;
 
 /**
  * Created by huisoucw on 2018/8/30.
@@ -44,7 +48,7 @@ public class RefreshLayout extends ViewGroup implements ViewTreeObserver.OnScrol
     private int mTouchSlop;
     private ImageView mHeadImage, mFootImage;
     private boolean isAutoLoadMore;
-    private OverScroller mScroller;
+    private OverScroller mChildScroller;
     private VelocityTracker mVelocityTracker;
 
     public RefreshLayout(Context context) {
@@ -92,9 +96,9 @@ public class RefreshLayout extends ViewGroup implements ViewTreeObserver.OnScrol
         mChild.getViewTreeObserver().addOnScrollChangedListener(this);
         mChild.setOnScrollChangeListener(this);
         if (mChild instanceof RecyclerView) {
-            mScroller = new OverScroller(getContext(), sQuinticInterpolator);
+            mChildScroller = new OverScroller(getContext(), sQuinticInterpolator);
         } else {
-            mScroller = new OverScroller(getContext());
+            mChildScroller = new OverScroller(getContext());
         }
     }
 
@@ -221,31 +225,10 @@ public class RefreshLayout extends ViewGroup implements ViewTreeObserver.OnScrol
     @Override
     public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
         if (mChildVelocity < 0) {
-            //mScroller.computeScrollOffset();
-            Log.e("main", "curY " + mScroller.getCurrY());
-            Log.e("main", "开始fling" + mScroller.getCurrVelocity() + "总速率为 " + mChildVelocity);
+            mChildScroller.computeScrollOffset();
+            Log.e("main", "开始fling  " + mChildScroller.getCurrVelocity() + "总速率为 " + mChildVelocity);
             if (!canChildScrollDown()) {
-                Log.e("main", "当前速率为" + mScroller.getCurrVelocity() + "总速率为 " + mChildVelocity);
-                postInvalidate();
-            }
-        }
-    }
-
-    @Override
-    public void computeScroll() {
-        super.computeScroll();
-        if (mScroller.computeScrollOffset()) {
-            Log.e("main", "curY " + mScroller.getCurrY());
-            scrollTo(0, mScroller.getCurrY());
-            postInvalidate();
-            if (mScroller.isFinished()) {
-                if (!isLoading && isAutoLoadMore) {
-                    isLoading = true;
-                    setFootAnim(true);
-                    if (mLoadMoreListener != null) {
-                        mLoadMoreListener.onLoadMore();
-                    }
-                }
+                flingTask.fling((int) mChildScroller.getCurrVelocity());
             }
         }
     }
@@ -257,9 +240,44 @@ public class RefreshLayout extends ViewGroup implements ViewTreeObserver.OnScrol
             return t * t * t * t * t + 1.0f;
         }
     };
+    private FlingTask flingTask = new FlingTask();
+
+    private class FlingTask implements Runnable {
+        private Scroller scroller;
+
+        FlingTask() {
+            scroller = new Scroller(getContext(), new DecelerateInterpolator());
+        }
+
+        void fling(int velocity) {
+            scroller.fling(0, getScrollY(), 0, velocity, Integer.MIN_VALUE, Integer.MAX_VALUE,
+                    Integer.MIN_VALUE, mFooter.getHeight());
+            post(this);
+            Log.e("main", "当前速率为" + velocity);
+        }
+
+        @Override
+        public void run() {
+            if (scroller.computeScrollOffset()) {
+                Log.e("main", " curY " + scroller.getCurrY());
+                scrollTo(0, scroller.getCurrY());
+                post(this);
+                if (isAutoLoadMore) {
+                    if (isLoading) return;
+                    isLoading = true;
+                    setFootAnim(true);
+                    if (mLoadMoreListener != null) {
+                        mLoadMoreListener.onLoadMore();
+                    }
+                }
+            }
+        }
+    }
+
 
     private void computerFlingWithChild() {
-        mScroller.fling(0, getScrollY(), 0, (int) -mChildVelocity, Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, mFooter.getHeight());
+        mChildScroller.fling(0, getScrollY(), 0, (int) -mChildVelocity, Integer.MIN_VALUE, Integer.MAX_VALUE,
+                Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
     private float mChildVelocity;
