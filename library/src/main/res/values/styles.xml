@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="UniversalRefreshLayout">
+        <item name="head_anim_frame">@drawable/refresh_anim</item>
+        <item name="foot_anim_frame">@drawable/refresh_anim</item>
+        <item name="max_scroll_distance">100dp</item>
+    </style>
+</resources>

@@ -5,17 +5,15 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
-import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.fyp.library.RefreshLayout;
+import com.fyp.library.UniversalRefreshLayout;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +25,7 @@ import java.util.List;
 public class TestFragment extends Fragment {
     private RecyclerView mList;
     private List<String> mData = new ArrayList<>();
-    private RefreshLayout mRefreshLayout;
+    private UniversalRefreshLayout mRefreshLayout;
     private int max = 30;
 
     @Nullable
@@ -47,9 +45,9 @@ public class TestFragment extends Fragment {
         mList.setNestedScrollingEnabled(pos > 2);
         mList.setLayoutManager(new LinearLayoutManager(getActivity()));
         mRefreshLayout = getView().findViewById(R.id.refresh);
-        mRefreshLayout.setAutoLoadMore(pos > 2);
+        mRefreshLayout.setAutoLoadMore(pos < 2);
         mList.setAdapter(new DataAdapter());
-        mRefreshLayout.setOnRefreshListener(new RefreshLayout.OnRefreshListener() {
+        mRefreshLayout.setOnRefreshListener(new UniversalRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
                 mRefreshLayout.loadMoreEnabled();
@@ -57,7 +55,7 @@ public class TestFragment extends Fragment {
                 mHandler.sendEmptyMessageDelayed(1, 2000);
             }
         });
-        mRefreshLayout.setOnLoadMoreListener(new RefreshLayout.OnLoadMoreListener() {
+        mRefreshLayout.setOnLoadMoreListener(new UniversalRefreshLayout.OnLoadMoreListener() {
             @Override
             public void onLoadMore() {
                 mHandler.sendEmptyMessageDelayed(2, 2000);

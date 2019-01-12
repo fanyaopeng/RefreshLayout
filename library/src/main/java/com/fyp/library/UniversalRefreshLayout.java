@@ -4,6 +4,9 @@ import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.res.Resources;
+import android.content.res.TypedArray;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
@@ -22,7 +25,7 @@ import android.view.ViewGroup;
 /**
  * 一个可定制的刷新控件  支持NestedScrolling 控件 等的惯性滑动
  */
-public class RefreshLayout extends ViewGroup implements NestedScrollingParent2 {
+public class UniversalRefreshLayout extends ViewGroup implements NestedScrollingParent2 {
     private View mChild;
     private FooterView mFooter;
     private HeaderView mHeader;
@@ -42,6 +45,8 @@ public class RefreshLayout extends ViewGroup implements NestedScrollingParent2 {
     private boolean isNestedScrollingChild;
     private boolean isNestedScrollingChildFling;
     private boolean isAutoLoadMore;
+    private Drawable mFootAnim;
+    private Drawable mHeadAnim;
     //手势标记
     private int motionMask = 0;
     //停止scrolling标记
@@ -49,16 +54,25 @@ public class RefreshLayout extends ViewGroup implements NestedScrollingParent2 {
     //是否正在惯性返回下拉刷新
     private boolean isRefreshResetting;
 
-    public RefreshLayout(Context context) {
-        super(context);
+    public UniversalRefreshLayout(Context context) {
+        this(context, null);
     }
 
-    public RefreshLayout(Context context, AttributeSet attrs) {
-        super(context, attrs);
+    public UniversalRefreshLayout(Context context, AttributeSet attrs) {
+        this(context, attrs, R.attr.UniversalRefreshLayoutStyle);
+    }
+
+    public UniversalRefreshLayout(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.UniversalRefreshLayout, defStyleAttr, R.style.UniversalRefreshLayout);
+        mMaxOffset = a.getDimensionPixelOffset(R.styleable.UniversalRefreshLayout_max_scroll_distance, 100);
+        mHeadAnim = a.getDrawable(R.styleable.UniversalRefreshLayout_head_anim_frame);
+        mFootAnim = a.getDrawable(R.styleable.UniversalRefreshLayout_foot_anim_frame);
+        a.recycle();
+
         createHeadView();
         createFootView();
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
-        mMaxOffset = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100, context.getResources().getDisplayMetrics());
         mNestedScrollingParentHelper = new NestedScrollingParentHelper(this);
     }
 
@@ -94,12 +108,12 @@ public class RefreshLayout extends ViewGroup implements NestedScrollingParent2 {
     }
 
     private void createFootView() {
-        FooterView footerView = new FooterView(getContext());
+        FooterView footerView = new FooterView(getContext(), mFootAnim);
         addView(footerView);
     }
 
     private void createHeadView() {
-        HeaderView headerView = new HeaderView(getContext());
+        HeaderView headerView = new HeaderView(getContext(), mHeadAnim);
         addView(headerView);
     }
 
@@ -165,11 +179,10 @@ public class RefreshLayout extends ViewGroup implements NestedScrollingParent2 {
 
     @Override
     public void onStopNestedScroll(@NonNull View target, int type) {
-        // Log.e("main", "onStopNestedScroll");
         //这个方法调用三次 分别在down up 和fling结束 分别处理
         mNestedScrollingParentHelper.onStopNestedScroll(target, type);
         onNestedScrollingStopMask <<= 1;
-        Log.e("main", "onNestedScrollingStopMask " + onNestedScrollingStopMask);
+        //Log.e("main", "onNestedScrollingStopMask " + onNestedScrollingStopMask);
         if (!isNestedScrollingChildFling) {
             if ((onNestedScrollingStopMask & 4) == 4) {
                 scrollEnd();
@@ -195,7 +208,8 @@ public class RefreshLayout extends ViewGroup implements NestedScrollingParent2 {
         if (isLoading || isRefreshing || !isEnabled()) {
             return;
         }
-        if (dyUnconsumed < 0 && isRefreshResetting) {
+        //刷新正在惯性回滚
+        if (isNestedScrollingChildFling && dyUnconsumed < 0 && isRefreshResetting) {
             return;
         }
         int offset = Math.abs(getScrollY());
@@ -213,7 +227,7 @@ public class RefreshLayout extends ViewGroup implements NestedScrollingParent2 {
             intercept = true;
         }
         if (intercept) {
-            scrollBy(0, dyUnconsumed);
+            scrollBy(0, getTargetOffset(dyUnconsumed));
         }
     }
 
@@ -242,6 +256,27 @@ public class RefreshLayout extends ViewGroup implements NestedScrollingParent2 {
             }
         }
 
+    }
+
+    /**
+     * 计算超过最大值前 的距离
+     *
+     * @param dy
+     * @return
+     */
+    private int getTargetOffset(int dy) {
+        int symbol;
+        if (dy > 0) {
+            symbol = 1;
+        } else {
+            symbol = -1;
+        }
+        int offset = getScrollY();
+        int pending = offset + dy;
+        if (Math.abs(pending) > mMaxOffset) {
+            dy = symbol * mMaxOffset - offset;
+        }
+        return dy;
     }
 
     @Override
@@ -284,6 +319,7 @@ public class RefreshLayout extends ViewGroup implements NestedScrollingParent2 {
                         if (!canChildScrollUp()) {
                             mPendingRefresh = true;
                             intercept = true;
+
                         }
                         if (mPendingLoadMore) {
                             intercept = true;
@@ -307,7 +343,7 @@ public class RefreshLayout extends ViewGroup implements NestedScrollingParent2 {
                         }
                     }
                     if (intercept) {
-                        scrollBy(0, (int) dy);
+                        scrollBy(0, getTargetOffset((int) dy));
                         return true;
                     }
                     break;

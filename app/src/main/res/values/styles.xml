@@ -6,6 +6,11 @@
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <item name="UniversalRefreshLayoutStyle">@style/APPUniversalRefreshLayout</item>
     </style>
 
+    <style name="APPUniversalRefreshLayout" parent="UniversalRefreshLayout">
+        <item name="max_scroll_distance">50dp</item>
+        <item name="head_anim_frame">@mipmap/ic_launcher</item>
+    </style>
 </resources>
