@@ -1,21 +1,15 @@
-package com.fyp.library;
+package com.fyp.refresh;
 
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.content.Context;
-import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
 import android.support.annotation.NonNull;
-import android.support.annotation.RequiresApi;
 import android.support.v4.view.NestedScrollingChild2;
 import android.support.v4.view.NestedScrollingParent2;
 import android.support.v4.view.NestedScrollingParentHelper;
 import android.util.AttributeSet;
-import android.util.Log;
-import android.util.TypedValue;
 import android.view.InflateException;
 import android.view.MotionEvent;
 import android.view.View;
@@ -365,7 +359,7 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
                 smoothScrollTo(0);
                 isRefreshResetting = true;
             } else {
-                if (Math.abs(offset) >= mFooter.getHeight()) {
+                if (Math.abs(offset) >= mHeader.getHeight()) {
                     isRefreshing = true;
                     smoothScrollTo(-mHeader.getHeight());
                     setHeadAnim(true);

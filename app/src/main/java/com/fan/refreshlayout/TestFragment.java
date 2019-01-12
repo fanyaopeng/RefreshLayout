@@ -13,7 +13,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.fyp.library.UniversalRefreshLayout;
+import com.fyp.refresh.UniversalRefreshLayout;
 
 import java.util.ArrayList;
 import java.util.List;
