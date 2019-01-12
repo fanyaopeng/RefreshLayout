@@ -15,6 +15,8 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.fyp.library.RefreshLayout;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,7 +28,7 @@ public class TestFragment extends Fragment {
     private RecyclerView mList;
     private List<String> mData = new ArrayList<>();
     private RefreshLayout mRefreshLayout;
-    private int max = Integer.MAX_VALUE;
+    private int max = 30;
 
     @Nullable
     @Override
@@ -38,13 +40,14 @@ public class TestFragment extends Fragment {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         mList = getView().findViewById(R.id.list);
-        mList.setNestedScrollingEnabled(false);
         for (int i = 0; i < 5; i++) {
             mData.add("这是数据" + i);
         }
+        int pos = getArguments().getInt("pos");
+        mList.setNestedScrollingEnabled(pos > 2);
         mList.setLayoutManager(new LinearLayoutManager(getActivity()));
         mRefreshLayout = getView().findViewById(R.id.refresh);
-        mRefreshLayout.setAutoLoadMore(getArguments().getInt("pos") > 1);
+        mRefreshLayout.setAutoLoadMore(pos > 2);
         mList.setAdapter(new DataAdapter());
         mRefreshLayout.setOnRefreshListener(new RefreshLayout.OnRefreshListener() {
             @Override
@@ -57,7 +60,6 @@ public class TestFragment extends Fragment {
         mRefreshLayout.setOnLoadMoreListener(new RefreshLayout.OnLoadMoreListener() {
             @Override
             public void onLoadMore() {
-                Log.e("main", "onLoadMore");
                 mHandler.sendEmptyMessageDelayed(2, 2000);
             }
         });
