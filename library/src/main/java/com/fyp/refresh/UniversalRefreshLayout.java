@@ -38,6 +38,9 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
     private NestedScrollingParentHelper mNestedScrollingParentHelper;
     private boolean isNestedScrollingChild;
     private boolean isNestedScrollingChildFling;
+    private float mNestedScrollingChildFlingVelocity;
+    //大于这个速率我们才认为他是在fling
+    private final int mSlopFlingVelocity = 3000;
     private boolean isAutoLoadMore;
     private Drawable mFootAnim;
     private Drawable mHeadAnim;
@@ -45,8 +48,8 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
     private int motionMask = 0;
     //停止scrolling标记
     private int onNestedScrollingStopMask = 1;
-    //是否正在惯性返回下拉刷新
-    private boolean isRefreshResetting;
+    //是否正在惯性返回下拉刷新或者加载更多
+    private boolean isResettingInertia;
 
     public UniversalRefreshLayout(Context context) {
         this(context, null);
@@ -62,6 +65,7 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
         mMaxOffset = a.getDimensionPixelOffset(R.styleable.UniversalRefreshLayout_max_scroll_distance, 100);
         mHeadAnim = a.getDrawable(R.styleable.UniversalRefreshLayout_head_anim_frame);
         mFootAnim = a.getDrawable(R.styleable.UniversalRefreshLayout_foot_anim_frame);
+        isAutoLoadMore = a.getBoolean(R.styleable.UniversalRefreshLayout_auto_load_more, true);
         a.recycle();
 
         createHeadView();
@@ -184,7 +188,7 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
         } else {
             if ((onNestedScrollingStopMask & 8) == 8) {
                 //这里只处理比max小的情况 比max 大 的情况已经被 onNestedScroll 处理
-                if (Math.abs(getScrollY()) < mMaxOffset) {
+                if (Math.abs(getScrollY()) < mMaxOffset || mNestedScrollingChildFlingVelocity != 0) {
                     scrollEnd();
                 }
             }
@@ -194,6 +198,7 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
     @Override
     public boolean onNestedFling(View target, float velocityX, float velocityY, boolean consumed) {
         isNestedScrollingChildFling = consumed;
+        mNestedScrollingChildFlingVelocity = Math.abs(velocityY);
         return super.onNestedFling(target, velocityX, velocityY, consumed);
     }
 
@@ -203,15 +208,15 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
             return;
         }
         //刷新正在惯性回滚
-        if (isNestedScrollingChildFling && dyUnconsumed < 0 && isRefreshResetting) {
+        if (isNestedScrollingChildFling && isResettingInertia) {
             return;
         }
         int offset = Math.abs(getScrollY());
-        if (offset >= mMaxOffset) {
-            if (isNestedScrollingChildFling) {
+        if (isNestedScrollingChildFling) {
+            if (offset >= mMaxOffset) {
                 scrollEnd();
+                return;
             }
-            return;
         }
         boolean intercept = false;
         if (dyUnconsumed < 0 && !canChildScrollUp()) {
@@ -284,7 +289,8 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
                     motionMask &= 0;
                     onNestedScrollingStopMask = 1;
                     isNestedScrollingChildFling = false;
-                    isRefreshResetting = false;
+                    isResettingInertia = false;
+                    mNestedScrollingChildFlingVelocity = 0;
                     break;
                 case MotionEvent.ACTION_MOVE:
                     motionMask |= 2;
@@ -353,11 +359,12 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
         if (isLoading || isRefreshing || !isEnabled()) {
             return;
         }
+
         int offset = getScrollY();
         if (offset < 0) {
-            if (isNestedScrollingChild && isNestedScrollingChildFling) {
+            if (isNestedScrollingChildFling) {
                 smoothScrollTo(0);
-                isRefreshResetting = true;
+                isResettingInertia = true;
             } else {
                 if (Math.abs(offset) >= mHeader.getHeight()) {
                     isRefreshing = true;
@@ -370,15 +377,20 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
             }
         }
         if (offset > 0) {
-            if (offset > mFooter.getHeight()) {
-                smoothScrollTo(mFooter.getHeight());
-            }
-            if (isAutoLoadMore || offset > mFooter.getHeight()) {
-                isLoading = true;
-                setFootAnim(true);
-                if (mLoadMoreListener != null) mLoadMoreListener.onLoadMore();
-            } else {
+            if (isNestedScrollingChildFling && mNestedScrollingChildFlingVelocity > mSlopFlingVelocity && !isAutoLoadMore) {
                 smoothScrollTo(0);
+                isResettingInertia = true;
+            } else {
+                if (offset > mFooter.getHeight()) {
+                    smoothScrollTo(mFooter.getHeight());
+                }
+                if (offset > mFooter.getHeight() || isAutoLoadMore) {
+                    isLoading = true;
+                    setFootAnim(true);
+                    if (mLoadMoreListener != null) mLoadMoreListener.onLoadMore();
+                } else {
+                    smoothScrollTo(0);
+                }
             }
         }
         mPendingRefresh = false;

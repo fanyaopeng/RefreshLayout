@@ -43,7 +43,7 @@ public class TestFragment extends Fragment {
 
         }
         int pos = getArguments().getInt("pos");
-        mList.setNestedScrollingEnabled(pos > 2);
+        //mList.setNestedScrollingEnabled(pos > 2);
         mList.setLayoutManager(new LinearLayoutManager(getActivity()));
         mRefreshLayout = getView().findViewById(R.id.refresh);
         mRefreshLayout.setAutoLoadMore(pos < 2);

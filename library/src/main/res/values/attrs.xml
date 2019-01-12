@@ -4,6 +4,7 @@
         <attr name="foot_anim_frame" format="reference" />
         <attr name="head_anim_frame" format="reference" />
         <attr name="max_scroll_distance" format="dimension" />
+        <attr name="auto_load_more" format="boolean" />
     </declare-styleable>
     <attr name="UniversalRefreshLayoutStyle" format="reference" />
 </resources>
