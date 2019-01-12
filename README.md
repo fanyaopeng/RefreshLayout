@@ -20,7 +20,9 @@
       app:auto_load_more="false"
    ```
    或者
+   ```
       mRefreshLayout.setAutoLoadMore
+   ```
 6. 默认效果为
    ![image](https://github.com/fanyaopeng/RefreshLayout/blob/master/images/Screenshot_2019-01-12-19-33-41-09.png)
 7. start ! star!
