@@ -14,5 +14,7 @@
     </style>
    ```
    这里head_anim_frame和foot_anim_frame可以是一个AnimationList 代码会自动控制动画的停止与运行
+   默认效果为
+   ![image](https://github.com/fanyaopeng/RefreshLayout/blob/master/images/Screenshot_2019-01-12-19-33-41-09.png)
 5. start ! star!
 
