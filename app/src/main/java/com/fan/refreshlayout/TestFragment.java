@@ -40,6 +40,7 @@ public class TestFragment extends Fragment {
         mList = getView().findViewById(R.id.list);
         for (int i = 0; i < 5; i++) {
             mData.add("这是数据" + i);
+
         }
         int pos = getArguments().getInt("pos");
         mList.setNestedScrollingEnabled(pos > 2);

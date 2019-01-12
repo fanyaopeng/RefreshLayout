@@ -7,9 +7,12 @@
    ```
     <item name="UniversalRefreshLayoutStyle">@style/APPUniversalRefreshLayout</item>
     <style name="APPUniversalRefreshLayout" parent="UniversalRefreshLayout">
-        <item name="max_scroll_distance">50dp</item>
-        <item name="head_anim_frame">@mipmap/ic_launcher</item>
+         <item name="max_scroll_distance">50dp</item>
+          <item name="head_anim_frame">@mipmap/ic_launcher</item>
+          <item name="foot_anim_frame">@mipmap/ic_launcher</item>
+
     </style>
    ```
+   这里head_anim_frame和foot_anim_frame可以是一个AnimationList 代码会自动控制动画的停止与运行
 5. start ! star!
 

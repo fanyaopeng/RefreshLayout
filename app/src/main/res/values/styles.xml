@@ -12,5 +12,6 @@
     <style name="APPUniversalRefreshLayout" parent="UniversalRefreshLayout">
         <item name="max_scroll_distance">50dp</item>
         <item name="head_anim_frame">@mipmap/ic_launcher</item>
+        <item name="foot_anim_frame">@mipmap/ic_launcher</item>
     </style>
 </resources>
