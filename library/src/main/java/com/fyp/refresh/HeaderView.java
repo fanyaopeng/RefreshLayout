@@ -3,7 +3,7 @@ package com.fyp.refresh;
 import android.content.Context;
 import android.graphics.drawable.AnimationDrawable;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 

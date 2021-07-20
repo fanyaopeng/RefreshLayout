@@ -1,15 +1,18 @@
 package com.fyp.refresh;
 
 import android.animation.ValueAnimator;
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.NonNull;
-import android.support.v4.view.NestedScrollingChild2;
-import android.support.v4.view.NestedScrollingParent2;
-import android.support.v4.view.NestedScrollingParentHelper;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.view.NestedScrollingParent3;
+import androidx.core.view.NestedScrollingParentHelper;
+import androidx.core.view.ViewCompat;
+
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.InflateException;
 import android.view.MotionEvent;
 import android.view.View;
@@ -19,11 +22,11 @@ import android.view.ViewGroup;
 /**
  * 一个可定制的刷新控件  支持NestedScrolling 控件 等的惯性滑动
  */
-public class UniversalRefreshLayout extends ViewGroup implements NestedScrollingParent2 {
+public class UniversalRefreshLayout extends ViewGroup {
     private View mChild;
     private FooterView mFooter;
     private HeaderView mHeader;
-    private int mMaxOffset;
+    private final int mMaxOffset;
     private boolean isLoading;
     private boolean isRefreshing;
     private float mLastY;
@@ -34,22 +37,12 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
     private boolean isEnabledLoadMore;
     private boolean mPendingRefresh;
     private boolean mPendingLoadMore;
-    private int mTouchSlop;
-    private NestedScrollingParentHelper mNestedScrollingParentHelper;
-    private boolean isNestedScrollingChild;
-    private boolean isNestedScrollingChildFling;
-    private float mNestedScrollingChildFlingVelocity;
-    //大于这个速率我们才认为他是在fling
-    private final int mSlopFlingVelocity = 3000;
+    private final int mTouchSlop;
+    private final NestedScrollingParentHelper mParentHelper;
     private boolean isAutoLoadMore;
-    private Drawable mFootAnim;
-    private Drawable mHeadAnim;
-    //手势标记
-    private int motionMask = 0;
-    //停止scrolling标记
-    private int onNestedScrollingStopMask = 1;
-    //是否正在惯性返回下拉刷新或者加载更多
-    private boolean isResettingInertia;
+    private final Drawable mFootAnim;
+    private final Drawable mHeadAnim;
+    private static final String TAG = "UniversalRefreshLayout";
 
     public UniversalRefreshLayout(Context context) {
         this(context, null);
@@ -68,10 +61,8 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
         isAutoLoadMore = a.getBoolean(R.styleable.UniversalRefreshLayout_auto_load_more, true);
         a.recycle();
 
-        createHeadView();
-        createFootView();
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
-        mNestedScrollingParentHelper = new NestedScrollingParentHelper(this);
+        mParentHelper = new NestedScrollingParentHelper(this);
     }
 
     @Override
@@ -84,35 +75,33 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
 
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-        if (changed) {
-            ensureTarget();
+        top = -mHeader.getMeasuredHeight();
+        for (int i = 0; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            child.layout(left, top, right, top + child.getMeasuredHeight());
+            top += child.getMeasuredHeight();
         }
-        int headTop = -mHeader.getMeasuredHeight();
-        mHeader.layout(left, headTop, right, headTop + mHeader.getMeasuredHeight());
-        int mChildHeight = getMeasuredHeight();
-        int childTop = mHeader.getBottom();
-        mChild.layout(left, childTop, right, mChildHeight);
-        int footTop = mChild.getBottom();
-        mFooter.layout(left, footTop, right, footTop + mFooter.getMeasuredHeight());
     }
 
-    private void ensureTarget() {
-        if (getChildCount() > 3) {
-            throw new InflateException("can only have one child");
+    @Override
+    protected void onFinishInflate() {
+        super.onFinishInflate();
+        if (getChildCount() != 1) {
+            throw new InflateException("只能有一个child");
         }
-        mHeader = (HeaderView) getChildAt(0);
-        mFooter = (FooterView) getChildAt(1);
-        mChild = getChildAt(2);
+        mChild = getChildAt(0);
+        createHeadView();
+        createFootView();
     }
 
     private void createFootView() {
-        FooterView footerView = new FooterView(getContext(), mFootAnim);
-        addView(footerView);
+        mFooter = new FooterView(getContext(), mFootAnim);
+        addView(mFooter);
     }
 
     private void createHeadView() {
-        HeaderView headerView = new HeaderView(getContext(), mHeadAnim);
-        addView(headerView);
+        mHeader = new HeaderView(getContext(), mHeadAnim);
+        addView(mHeader, 0);
     }
 
     @Override
@@ -163,194 +152,60 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
         mRefreshListener = listener;
     }
 
-    @SuppressLint("NewApi")
-    @Override
-    public boolean onStartNestedScroll(@NonNull View child, @NonNull View target, int axes, int type) {
-        isNestedScrollingChild = target instanceof NestedScrollingChild2 && target.isNestedScrollingEnabled();
-        return isNestedScrollingChild;
-    }
-
-    @Override
-    public void onNestedScrollAccepted(@NonNull View child, @NonNull View target, int axes, int type) {
-        mNestedScrollingParentHelper.onNestedScrollAccepted(child, target, axes, type);
-    }
-
-    @Override
-    public void onStopNestedScroll(@NonNull View target, int type) {
-        //这个方法调用三次 分别在down up 和fling结束 分别处理
-        mNestedScrollingParentHelper.onStopNestedScroll(target, type);
-        onNestedScrollingStopMask <<= 1;
-        //Log.e("main", "onNestedScrollingStopMask " + onNestedScrollingStopMask);
-        if (!isNestedScrollingChildFling) {
-            if ((onNestedScrollingStopMask & 4) == 4) {
-                scrollEnd();
-            }
-        } else {
-            if ((onNestedScrollingStopMask & 8) == 8) {
-                //这里只处理比max小的情况 比max 大 的情况已经被 onNestedScroll 处理
-                if (Math.abs(getScrollY()) < mMaxOffset || mNestedScrollingChildFlingVelocity != 0) {
-                    scrollEnd();
-                }
-            }
-        }
-    }
-
-    @Override
-    public boolean onNestedFling(View target, float velocityX, float velocityY, boolean consumed) {
-        isNestedScrollingChildFling = consumed;
-        mNestedScrollingChildFlingVelocity = Math.abs(velocityY);
-        return super.onNestedFling(target, velocityX, velocityY, consumed);
-    }
-
-    @Override
-    public void onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type) {
-        if (isLoading || isRefreshing || !isEnabled()) {
-            return;
-        }
-        //刷新正在惯性回滚
-        if (isNestedScrollingChildFling && isResettingInertia) {
-            return;
-        }
-        int offset = Math.abs(getScrollY());
-        if (isNestedScrollingChildFling) {
-            if (offset >= mMaxOffset) {
-                scrollEnd();
-                return;
-            }
-        }
-        boolean intercept = false;
-        if (dyUnconsumed < 0 && !canChildScrollUp()) {
-            intercept = true;
-        }
-        if (dyUnconsumed > 0 && !canChildScrollDown() && isEnabledLoadMore) {
-            intercept = true;
-        }
-        if (intercept) {
-            scrollBy(0, getTargetOffset(dyUnconsumed));
-        }
-    }
-
-    @Override
-    public void onNestedPreScroll(@NonNull View target, int dx, int dy, @NonNull int[] consumed, int type) {
-        if (isLoading || isRefreshing || !isEnabled()) {
-            return;
-        }
-        int offset = getScrollY();
-        if (dy > 0) {
-            if (offset < 0) {
-                if (offset + dy > 0) {
-                    dy = -offset;
-                }
-                scrollBy(0, dy);
-                consumed[1] = dy;
-            }
-        }
-        if (dy < 0) {
-            if (offset > 0) {
-                if (offset + dy < 0) {
-                    dy = -offset;
-                }
-                scrollBy(0, dy);
-                consumed[1] = dy;
-            }
-        }
-
-    }
-
-    /**
-     * 计算超过最大值前 的距离
-     *
-     * @param dy
-     * @return
-     */
-    private int getTargetOffset(int dy) {
-        int symbol;
-        if (dy > 0) {
-            symbol = 1;
-        } else {
-            symbol = -1;
-        }
-        int offset = getScrollY();
-        int pending = offset + dy;
-        if (Math.abs(pending) > mMaxOffset) {
-            dy = symbol * mMaxOffset - offset;
-        }
-        return dy;
-    }
-
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         if (isLoading || isRefreshing || !isEnabled()) {
             return super.dispatchTouchEvent(ev);
         }
-        if (isNestedScrollingChild) {
-            switch (ev.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    motionMask &= 0;
-                    onNestedScrollingStopMask = 1;
-                    isNestedScrollingChildFling = false;
-                    isResettingInertia = false;
-                    mNestedScrollingChildFlingVelocity = 0;
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    motionMask |= 2;
-                    break;
-                case MotionEvent.ACTION_UP:
-                    motionMask |= 1;
-                    break;
-            }
-        } else {
-            switch (ev.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    mDownY = ev.getRawY();
-                    mLastY = mDownY;
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    int offset = getScrollY();
-                    float curY = ev.getRawY();
-                    float dy = mLastY - curY;
-                    mLastY = curY;
-                    if (Math.abs(curY - mDownY) < mTouchSlop) {
-                        return super.dispatchTouchEvent(ev);
+        switch (ev.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                mDownY = ev.getRawY();
+                mLastY = mDownY;
+                break;
+            case MotionEvent.ACTION_MOVE:
+                int offset = getScrollY();
+                float curY = ev.getRawY();
+                float dy = mLastY - curY;
+                mLastY = curY;
+                if (Math.abs(curY - mDownY) < mTouchSlop) {
+                    return super.dispatchTouchEvent(ev);
+                }
+                float pending = offset + dy;
+                boolean intercept = false;
+                if (dy < 0) {
+                    if (!canChildScrollUp()) {
+                        mPendingRefresh = true;
+                        intercept = true;
                     }
-                    float pending = offset + dy;
-                    boolean intercept = false;
-                    if (dy < 0) {
-                        if (!canChildScrollUp()) {
-                            mPendingRefresh = true;
-                            intercept = true;
-
-                        }
-                        if (mPendingLoadMore) {
-                            intercept = true;
-                            if (pending < 0) {
-                                scrollTo(0, 0);
-                                return super.dispatchTouchEvent(ev);
-                            }
+                    if (mPendingLoadMore) {
+                        intercept = true;
+                        if (pending < 0) {
+                            scrollTo(0, 0);
+                            return super.dispatchTouchEvent(ev);
                         }
                     }
-                    if (dy > 0) {
-                        if (!canChildScrollDown()) {
-                            mPendingLoadMore = true;
-                            intercept = true;
-                        }
-                        if (mPendingRefresh) {
-                            intercept = true;
-                            if (pending > 0) {
-                                scrollTo(0, 0);
-                                return super.dispatchTouchEvent(ev);
-                            }
+                }
+                if (dy > 0 && isEnabledLoadMore) {
+                    if (!canChildScrollDown()) {
+                        mPendingLoadMore = true;
+                        intercept = true;
+                    }
+                    if (mPendingRefresh) {
+                        intercept = true;
+                        if (pending > 0) {
+                            scrollTo(0, 0);
+                            return super.dispatchTouchEvent(ev);
                         }
                     }
-                    if (intercept) {
-                        scrollBy(0, getTargetOffset((int) dy));
-                        return true;
-                    }
-                    break;
-                case MotionEvent.ACTION_UP:
-                    scrollEnd();
-                    break;
-            }
+                }
+                if (intercept) {
+                    scrollBy(0, (int) dy);
+                    return true;
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+                scrollEnd();
+                break;
         }
         return super.dispatchTouchEvent(ev);
     }
@@ -359,38 +214,27 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
         if (isLoading || isRefreshing || !isEnabled()) {
             return;
         }
-
         int offset = getScrollY();
         if (offset < 0) {
-            if (isNestedScrollingChildFling) {
-                smoothScrollTo(0);
-                isResettingInertia = true;
+            if (Math.abs(offset) >= mHeader.getHeight()) {
+                isRefreshing = true;
+                smoothScrollTo(-mHeader.getHeight());
+                setHeadAnim(true);
+                if (mRefreshListener != null) mRefreshListener.onRefresh();
             } else {
-                if (Math.abs(offset) >= mHeader.getHeight()) {
-                    isRefreshing = true;
-                    smoothScrollTo(-mHeader.getHeight());
-                    setHeadAnim(true);
-                    if (mRefreshListener != null) mRefreshListener.onRefresh();
-                } else {
-                    smoothScrollTo(0);
-                }
+                smoothScrollTo(0);
             }
         }
         if (offset > 0) {
-            if (isNestedScrollingChildFling && mNestedScrollingChildFlingVelocity > mSlopFlingVelocity && !isAutoLoadMore) {
-                smoothScrollTo(0);
-                isResettingInertia = true;
+            if (offset > mFooter.getHeight()) {
+                smoothScrollTo(mFooter.getHeight());
+            }
+            if (offset > mFooter.getHeight() || isAutoLoadMore) {
+                isLoading = true;
+                setFootAnim(true);
+                if (mLoadMoreListener != null) mLoadMoreListener.onLoadMore();
             } else {
-                if (offset > mFooter.getHeight()) {
-                    smoothScrollTo(mFooter.getHeight());
-                }
-                if (offset > mFooter.getHeight() || isAutoLoadMore) {
-                    isLoading = true;
-                    setFootAnim(true);
-                    if (mLoadMoreListener != null) mLoadMoreListener.onLoadMore();
-                } else {
-                    smoothScrollTo(0);
-                }
+                smoothScrollTo(0);
             }
         }
         mPendingRefresh = false;
@@ -483,5 +327,81 @@ public class UniversalRefreshLayout extends ViewGroup implements NestedScrolling
 
     public void setOnChildScrollListener(OnChildScrollListener listener) {
         mChildScrollListener = listener;
+    }
+
+    @Override
+    public int getNestedScrollAxes() {
+        return mParentHelper.getNestedScrollAxes();
+    }
+
+//    @Override
+//    public boolean onStartNestedScroll(@NonNull View child, @NonNull View target, int axes, int type) {
+//        return (axes & ViewCompat.SCROLL_AXIS_VERTICAL) != 0 && !isLoading && !isRefreshing;
+//    }
+//
+//    @Override
+//    public void onNestedScrollAccepted(@NonNull View child, @NonNull View target, int axes, int type) {
+//        mParentHelper.onNestedScrollAccepted(child, target, axes, type);
+//    }
+//
+//    @Override
+//    public void onStopNestedScroll(@NonNull View target, int type) {
+//        mParentHelper.onStopNestedScroll(target, type);
+//    }
+//
+//    @Override
+//    public void onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type, @NonNull int[] consumed) {
+//        onNestedScrollInternal(dyUnconsumed, type, consumed);
+//    }
+//
+//    @Override
+//    public void onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type) {
+//        onNestedScrollInternal(dyUnconsumed, type, null);
+//    }
+//
+//    private void onNestedScrollInternal(int dyUnconsumed, int type, @Nullable int[] consumed) {
+//        scrollBy(0, dyUnconsumed);
+//        if (consumed != null) {
+//            consumed[1] = dyUnconsumed;
+//        }
+//    }
+//
+//    @Override
+//    public void onNestedPreScroll(@NonNull View target, int dx, int dy, @NonNull int[] consumed, int type) {
+//        int scrollY = getScrollY();
+//        int targetY = scrollY + dy;
+//        if (dy > 0) {
+//            if (scrollY < 0) {
+//                if (targetY > 0) {
+//                    targetY = 0;
+//                }
+//                scrollBy(0, targetY - scrollY);
+//                consumed[1] = dy;
+//            }
+//        }
+//        if (dy < 0) {
+//            if (scrollY > 0) {
+//                if (targetY < 0) {
+//                    targetY = 0;
+//                }
+//                scrollBy(0, targetY - scrollY);
+//                consumed[1] = dy;
+//            }
+//        }
+//    }
+
+    @Override
+    public void scrollTo(int x, int y) {
+        if (y < 0) {
+            if (Math.abs(y) > mMaxOffset) {
+                y = -mMaxOffset;
+            }
+        }
+        if (y > 0) {
+            if (y > mMaxOffset) {
+                y = mMaxOffset;
+            }
+        }
+        super.scrollTo(x, y);
     }
 }

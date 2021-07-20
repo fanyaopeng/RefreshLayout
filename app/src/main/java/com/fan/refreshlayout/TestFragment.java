@@ -3,10 +3,10 @@ package com.fan.refreshlayout;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,16 +38,16 @@ public class TestFragment extends Fragment {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         mList = getView().findViewById(R.id.list);
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 20; i++) {
             mData.add("这是数据" + i);
 
         }
         int pos = getArguments().getInt("pos");
-        //mList.setNestedScrollingEnabled(pos > 2);
         mList.setLayoutManager(new LinearLayoutManager(getActivity()));
+        mList.setAdapter(new DataAdapter());
+
         mRefreshLayout = getView().findViewById(R.id.refresh);
         mRefreshLayout.setAutoLoadMore(pos < 2);
-        mList.setAdapter(new DataAdapter());
         mRefreshLayout.setOnRefreshListener(new UniversalRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
